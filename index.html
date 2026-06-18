@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>3D Projector — Admin Console</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d1a;color:#e6edf3;min-height:100vh}
+  .topbar{background:#161625;border-bottom:1px solid #333;padding:14px 32px;display:flex;align-items:center;gap:16px}
+  .topbar h1{font-size:18px;font-weight:600;color:#c4b5fd}
+  .topbar span{font-size:12px;color:#8b949e}
+  .login-wrap{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 57px)}
+  .login-box{background:#161625;border:1px solid #333;border-radius:12px;padding:40px;width:380px}
+  .login-box h2{font-size:20px;font-weight:600;margin-bottom:8px;color:#c4b5fd}
+  .login-box p{font-size:13px;color:#8b949e;margin-bottom:28px}
+  label{display:block;font-size:12px;color:#8b949e;margin-bottom:6px}
+  input[type=email],input[type=password],input[type=text],textarea,select{
+    width:100%;padding:10px 12px;background:#1e1e2e;border:1px solid #333;
+    border-radius:8px;color:#e6edf3;font-size:14px;margin-bottom:16px;outline:none}
+  input:focus,textarea:focus,select:focus{border-color:#7c3aed}
+  .btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;transition:opacity .2s}
+  .btn-primary{background:#7c3aed;color:white;width:100%}
+  .btn-primary:hover{opacity:.85}
+  .btn-green{background:#3fb950;color:white}
+  .btn-green:hover{opacity:.85}
+  .btn-red{background:#f85149;color:white}
+  .btn-red:hover{opacity:.85}
+  .btn-sm{padding:6px 14px;font-size:12px;border-radius:6px}
+  .error{color:#f85149;font-size:13px;margin-top:8px}
+  .main{display:none;padding:32px}
+  .tabs{display:flex;gap:4px;margin-bottom:28px;border-bottom:1px solid #333}
+  .tab{padding:10px 24px;cursor:pointer;font-size:14px;color:#8b949e;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:#c4b5fd;border-bottom-color:#7c3aed;font-weight:500}
+  .panel{display:none}
+  .panel.active{display:block}
+  .section-title{font-size:16px;font-weight:600;margin-bottom:20px;color:#e6edf3}
+  table{width:100%;border-collapse:collapse;background:#161625;border-radius:10px;overflow:hidden}
+  th{text-align:left;padding:12px 16px;font-size:12px;color:#8b949e;border-bottom:1px solid #333;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:14px 16px;font-size:14px;border-bottom:1px solid #1e1e2e;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1a1a2e}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+  .badge-green{background:#3fb95022;color:#3fb950}
+  .badge-red{background:#f8514922;color:#f85149}
+  .badge-gray{background:#8b949e22;color:#8b949e}
+  .toggle{position:relative;display:inline-block;width:44px;height:24px}
+  .toggle input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;border-radius:24px;transition:.3s}
+  .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s}
+  input:checked + .slider{background:#3fb950}
+  input:checked + .slider:before{transform:translateX(20px)}
+  .card{background:#161625;border:1px solid #333;border-radius:12px;padding:24px;margin-bottom:20px}
+  .form-group{margin-bottom:16px}
+  .form-group label{margin-bottom:6px}
+  .file-drop{border:2px dashed #333;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:16px}
+  .file-drop:hover,.file-drop.dragover{border-color:#7c3aed}
+  .file-drop p{color:#8b949e;font-size:14px}
+  .file-drop .icon{font-size:32px;margin-bottom:8px}
+  .progress-wrap{background:#1e1e2e;border-radius:8px;overflow:hidden;margin-bottom:8px;display:none}
+  .progress-bar{height:8px;background:#7c3aed;border-radius:8px;width:0;transition:width .3s}
+  .progress-label{font-size:12px;color:#8b949e;margin-bottom:4px;display:flex;justify-content:space-between}
+  .status-msg{font-size:13px;margin-top:8px;min-height:20px}
+  .logout-btn{margin-left:auto;padding:6px 16px;background:transparent;border:1px solid #333;color:#8b949e;border-radius:6px;cursor:pointer;font-size:13px}
+  .logout-btn:hover{border-color:#f85149;color:#f85149}
+  .empty{text-align:center;padding:48px;color:#8b949e;font-size:14px}
+  .search-bar{padding:10px 12px;background:#1e1e2e;border:1px solid #333;border-radius:8px;color:#e6edf3;font-size:14px;width:280px;margin-bottom:20px}
+  .search-bar:focus{outline:none;border-color:#7c3aed}
+  .key-box{background:#0d1a0d;border:1px solid #3fb950;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#3fb950;word-break:break-all;margin-top:4px;display:none}
+  .encrypt-steps{display:flex;gap:6px;margin-bottom:16px}
+  .step{flex:1;padding:7px 4px;background:#1e1e2e;border-radius:6px;font-size:11px;color:#555;text-align:center;border:1px solid #2a2a3a;transition:all .3s}
+  .step.active{border-color:#7c3aed;color:#c4b5fd;background:#252535}
+  .step.done{border-color:#3fb950;color:#3fb950;background:#0d1a0d}
+  .bulk-bar{background:#252535;border:1px solid #7c3aed;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:none;align-items:center;gap:12px}
+  .bulk-bar span{font-size:13px;color:#c4b5fd;font-weight:500}
+  .storage-bar{height:12px;background:#1e1e2e;border-radius:6px;overflow:hidden;margin-top:6px}
+  .storage-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#3fb950);border-radius:6px;transition:width .5s}
+  .stat-card{background:#161625;border:1px solid #333;border-radius:12px;padding:20px;text-align:center}
+  .stat-num{font-size:28px;font-weight:700;margin-bottom:4px}
+  .stat-label{font-size:12px;color:#8b949e}
+  .checkbox-col{width:40px}
+  input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#7c3aed}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🎬 3D Projector — Admin Console</h1>
+  <span id="topbarEmail"></span>
+  <button class="logout-btn" onclick="logout()">Sign out</button>
+</div>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginSection">
+  <div class="login-box">
+    <h2>Admin Sign In</h2>
+    <p>Sign in with your admin Supabase account</p>
+    <label>Email address</label>
+    <input type="email" id="loginEmail" placeholder="admin@example.com"/>
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••"/>
+    <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+    <div id="loginError" class="error"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="main" id="mainSection">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('users',this)">👥 User Management</div>
+    <div class="tab" onclick="switchTab('content',this)">🎬 Content Management</div>
+    <div class="tab" onclick="switchTab('stats',this)">📊 Overview</div>
+  </div>
+
+  <!-- USERS TAB -->
+  <div class="panel active" id="panel-users">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Registered Users</div>
+      <button class="btn btn-green btn-sm" onclick="loadUsers()">🔄 Refresh</button>
+    </div>
+    <div class="bulk-bar" id="bulkBar">
+      <span id="bulkCount">0 selected</span>
+      <button class="btn btn-green btn-sm" onclick="bulkApprove(true)">✅ Approve All</button>
+      <button class="btn btn-red btn-sm" onclick="bulkApprove(false)">🚫 Disapprove All</button>
+      <button class="btn btn-sm" style="background:#333;color:#e6edf3" onclick="clearSelection()">✕ Clear</button>
+    </div>
+    <input class="search-bar" type="text" placeholder="Search by email..." oninput="filterUsers(this.value)"/>
+    <table id="usersTable">
+      <thead>
+        <tr>
+          <th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"/></th>
+          <th>Email</th><th>Role</th><th>Last Seen</th><th>Approval</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody">
+        <tr><td colspan="6" class="empty">Loading users...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CONTENT TAB -->
+  <div class="panel" id="panel-content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div class="card">
+        <div class="section-title">Upload New Movie</div>
+        <div class="encrypt-steps">
+          <div class="step active" id="step1">1️⃣ Select</div>
+          <div class="step" id="step2">2️⃣ Encrypt</div>
+          <div class="step" id="step3">3️⃣ Upload</div>
+          <div class="step" id="step4">✅ Done</div>
+        </div>
+        <div class="form-group">
+          <label>Movie Title</label>
+          <input type="text" id="movieTitle" placeholder="e.g. Aurora 3D Experience"/>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="movieDesc" rows="2" placeholder="Short description..." style="resize:none"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Poster Emoji</label>
+          <input type="text" id="movieEmoji" placeholder="🎬" style="width:80px"/>
+        </div>
+        <div class="form-group">
+          <label>Genre (e.g. Action, Drama, Documentary)</label>
+          <input type="text" id="movieGenre" placeholder="e.g. Documentary"/>
+        </div>
+        <div class="form-group">
+          <label>Rating (e.g. U, U/A, A)</label>
+          <input type="text" id="movieRating" placeholder="e.g. U/A" style="width:100px"/>
+        </div>
+        <div class="form-group">
+          <label>Duration (seconds, e.g. 5400 = 1h 30m)</label>
+          <input type="number" id="movieDuration" placeholder="e.g. 5400"/>
+        </div>
+        <div class="form-group">
+          <label>Thumbnail Image (optional)</label>
+          <div class="file-drop" id="thumbDrop" style="padding:16px"
+               onclick="document.getElementById('thumbInput').click()">
+            <div class="icon" style="font-size:24px">🖼</div>
+            <p id="thumbDropText">Click to select thumbnail image</p>
+          </div>
+          <input type="file" id="thumbInput" accept="image/*" style="display:none" onchange="handleThumbSelect(this)"/>
+        </div>
+        <div class="form-group">
+          <label>Video File (.mp4, .mkv, .avi — encrypted automatically)</label>
+          <div class="file-drop" id="fileDrop"
+               onclick="document.getElementById('fileInput').click()"
+               ondragover="event.preventDefault();this.classList.add('dragover')"
+               ondragleave="this.classList.remove('dragover')"
+               ondrop="handleDrop(event)">
+            <div class="icon">📁</div>
+            <p id="fileDropText">Click to select video file or drag & drop</p>
+          </div>
+          <input type="file" id="fileInput" accept=".mp4,.mkv,.avi,.mov" style="display:none" onchange="handleFileSelect(this)"/>
+        </div>
+        <div class="form-group">
+          <label>AES-256 Key — auto-generated & saved to DB</label>
+          <div class="key-box" id="keyDisplay"></div>
+        </div>
+        <div class="progress-wrap" id="uploadProgressWrap">
+          <div class="progress-label">
+            <span id="progressStepLabel">Preparing...</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar" id="uploadProgressBar"></div>
+          <div class="progress-label" style="margin-top:6px">
+            <span id="progressBytes"></span>
+            <span id="progressSpeed"></span>
+          </div>
+        </div>
+        <div class="status-msg" id="uploadStatus"></div>
+        <button class="btn btn-primary" style="margin-top:12px" id="uploadBtn" onclick="encryptAndUpload()">
+          🔐 Encrypt &amp; Upload Movie
+        </button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="section-title" style="margin:0">Movie Library</div>
+          <button class="btn btn-green btn-sm" onclick="loadMovies()">🔄 Refresh</button>
+        </div>
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#8b949e;margin-bottom:4px">
+            <span>Storage used</span>
+            <span id="storageUsedLabel">Calculating...</span>
+          </div>
+          <div class="storage-bar"><div class="storage-fill" id="storageFill" style="width:0%"></div></div>
+          <div style="font-size:11px;color:#555;margin-top:4px">Free tier: 1 GB total</div>
+        </div>
+        <div id="moviesList"><p class="empty">Loading movies...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div class="panel" id="panel-stats">
+    <div class="section-title">Overview</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      <div class="stat-card"><div class="stat-num" style="color:#c4b5fd" id="statUsers">—</div><div class="stat-label">Total Users</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#3fb950" id="statApproved">—</div><div class="stat-label">Approved Users</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#58a6ff" id="statMovies">—</div><div class="stat-label">Total Movies</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#d29922" id="statPending">—</div><div class="stat-label">Pending Approval</div></div>
+    </div>
+    <div class="section-title">Storage per Movie</div>
+    <div id="storageBreakdown"><p class="empty">Loading...</p></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = 'https://lkjfcfefwagndfdnxbwo.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxramZjZmVmd2FnbmRmZG54YndvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjExODUsImV4cCI6MjA5NjIzNzE4NX0.LTn1YnrJOZuuwd5I8V1Q2EXCOKhjBUjs2pQZFiRPteU'
+
+
+const { createClient } = supabase
+
+// Login client uses anon key (for auth only)
+const sbAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// Admin client uses service role key (bypasses RLS for all DB operations)
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+let allUsers     = []
+let selectedFile = null
+let selectedThumb= null
+let selectedIds  = new Set()
+let approvalMap  = {}
+let currentSession = null
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function doLogin() {
+  const email    = document.getElementById('loginEmail').value.trim()
+  const password = document.getElementById('loginPassword').value
+  document.getElementById('loginError').textContent = ''
+
+  const { data, error } = await sbAuth.auth.signInWithPassword({ email, password })
+  if (error) { document.getElementById('loginError').textContent = error.message; return }
+
+  currentSession = data.session
+  document.getElementById('topbarEmail').textContent    = email
+  document.getElementById('loginSection').style.display = 'none'
+  document.getElementById('mainSection').style.display  = 'block'
+  loadUsers(); loadMovies(); loadStats()
+}
+
+async function logout() {
+  await sbAuth.auth.signOut()
+  currentSession = null
+  location.reload()
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+  el.classList.add('active')
+  document.getElementById('panel-' + name).classList.add('active')
+  if (name === 'stats') loadStorageBreakdown()
+}
+
+// ── USERS ─────────────────────────────────────────────────────
+async function loadUsers() {
+  const { data: approvalsData } = await sb.from('user_approvals').select('user_id, is_approved')
+  const { data: profiles }      = await sb.from('profiles').select('id, email, role')
+  const { data: sessions }      = await sb.from('active_sessions').select('user_id, last_seen')
+
+  approvalMap = {}
+  if (approvalsData) approvalsData.forEach(a => approvalMap[a.user_id] = a.is_approved)
+
+  const sessionMap = {}
+  if (sessions) sessions.forEach(s => sessionMap[s.user_id] = s.last_seen)
+
+  allUsers = profiles || []
+  selectedIds.clear()
+  updateBulkBar()
+  renderUsers(allUsers, approvalMap, sessionMap)
+  updateStats(allUsers, approvalMap)
+}
+
+function formatLastSeen(isoStr) {
+  if (!isoStr) return '—'
+  const d   = new Date(isoStr)
+  const now = new Date()
+  const diff= Math.floor((now - d) / 1000)
+  if (diff < 60)    return 'Just now'
+  if (diff < 3600)  return `${Math.floor(diff/60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+}
+
+function renderUsers(users, aMap, sessionMap) {
+  const tbody = document.getElementById('usersBody')
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No users found</td></tr>'
+    return
+  }
+  tbody.innerHTML = users.map(u => {
+    const isAdmin  = u.email === 'info@yuktavairagi.com' || u.role === 'admin'
+    const approved = aMap[u.id] || false
+    const lastSeen = formatLastSeen(sessionMap ? sessionMap[u.id] : null)
+    const badge    = approved
+      ? '<span class="badge badge-green">Approved</span>'
+      : '<span class="badge badge-red">Pending</span>'
+    const checked  = selectedIds.has(u.id) ? 'checked' : ''
+    return `<tr id="row_${u.id}">
+      <td><input type="checkbox" ${checked} onchange="toggleRowSelect('${u.id}', this.checked)"/></td>
+      <td>${u.email || '—'}</td>
+      <td>${isAdmin
+        ? '<span class="badge" style="background:#7c3aed22;color:#c4b5fd">Admin</span>'
+        : '<span class="badge badge-gray">User</span>'}</td>
+      <td style="font-size:12px;color:#8b949e">${lastSeen}</td>
+      <td>${isAdmin ? '<span class="badge badge-green">Approved</span>' : badge}</td>
+      <td style="display:flex;gap:8px;align-items:center">
+        ${isAdmin
+          ? '<span style="font-size:12px;color:#555;font-style:italic">Protected</span>'
+          : `<label class="toggle">
+              <input type="checkbox" ${approved ? 'checked' : ''}
+                onchange="toggleApproval('${u.id}', this.checked)"/>
+              <span class="slider"></span>
+             </label>
+             <button class="btn btn-red btn-sm" onclick="deleteUser('${u.id}','${u.email}')">Delete</button>`
+        }
+      </td>
+    </tr>`
+  }).join('')
+}
+
+function toggleRowSelect(userId, checked) {
+  if (checked) selectedIds.add(userId)
+  else         selectedIds.delete(userId)
+  updateBulkBar()
+}
+
+function toggleSelectAll(cb) {
+  allUsers.forEach(u => {
+    if (cb.checked) selectedIds.add(u.id)
+    else            selectedIds.delete(u.id)
+  })
+  document.querySelectorAll('#usersBody input[type=checkbox]').forEach(c => c.checked = cb.checked)
+  updateBulkBar()
+}
+
+function clearSelection() {
+  selectedIds.clear()
+  document.querySelectorAll('#usersBody input[type=checkbox]').forEach(c => c.checked = false)
+  document.getElementById('selectAll').checked = false
+  updateBulkBar()
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar')
+  const cnt = document.getElementById('bulkCount')
+  if (selectedIds.size > 0) {
+    bar.style.display = 'flex'
+    cnt.textContent   = `${selectedIds.size} user${selectedIds.size > 1 ? 's' : ''} selected`
+  } else {
+    bar.style.display = 'none'
+  }
+}
+
+async function bulkApprove(approved) {
+  if (selectedIds.size === 0) return
+  const label = approved ? 'approve' : 'disapprove'
+  if (!confirm(`${label.charAt(0).toUpperCase()+label.slice(1)} ${selectedIds.size} user(s)?`)) return
+
+  let done = 0
+  for (const userId of selectedIds) {
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/notify-user-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession?.access_token}`,
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ user_id: userId, is_approved: approved })
+      })
+      done++
+    } catch { }
+  }
+  showToast(`${approved ? '✅' : '🚫'} ${done} user(s) ${label}d`)
+  clearSelection()
+  loadUsers()
+}
+
+async function toggleApproval(userId, newStatus) {
+  // newStatus is already the desired value from this.checked
+  try {
+    const token = currentSession?.access_token;
+
+    if (!token) {
+      alert("Not authenticated. Please log in again.");
+      return;
+    }
+
+    // Check if a row exists for this user
+    const checkRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_approvals?user_id=eq.${userId}`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${token}`
+        }
+      }
+    );
+    const existing = await checkRes.json();
+
+    let res;
+    if (existing && existing.length > 0) {
+      // Row exists — PATCH it
+      res = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_approvals?user_id=eq.${userId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${token}`,
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify({ is_approved: newStatus })
+        }
+      );
+    } else {
+      // No row yet — INSERT one
+      res = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_approvals`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${token}`,
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify({ user_id: userId, is_approved: newStatus })
+        }
+      );
+    }
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Toggle failed:", err);
+      alert("Failed to update approval: " + err);
+      loadUsers(); // revert UI
+      return;
+    }
+
+    // Send email notification
+    await fetch(
+      `${SUPABASE_URL}/functions/v1/notify-user-status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ user_id: userId, is_approved: newStatus })
+      }
+    );
+
+    showToast(newStatus ? '✅ User approved' : '🚫 User disapproved');
+    loadUsers();
+
+  } catch (err) {
+    console.error("Error in toggleApproval:", err);
+    alert("Unexpected error: " + err.message);
+    loadUsers(); // revert UI on error
+  }
+}
+
+async function deleteUser(userId, email) {
+  if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
+  await sb.from('user_approvals').delete().eq('user_id', userId)
+  await sb.from('profiles').delete().eq('id', userId)
+  showToast('User deleted')
+  loadUsers()
+}
+
+function filterUsers(query) {
+  document.getElementById('usersBody').querySelectorAll('tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none'
+  })
+}
+
+// ── ENCRYPTION ────────────────────────────────────────────────
+async function generateAesKey() {
+  return crypto.subtle.generateKey({ name: 'AES-CBC', length: 256 }, true, ['encrypt', 'decrypt'])
+}
+
+async function exportKeyBase64(cryptoKey) {
+  const raw = await crypto.subtle.exportKey('raw', cryptoKey)
+  return btoa(String.fromCharCode(...new Uint8Array(raw)))
+}
+
+async function encryptFileBytes(fileArrayBuffer, cryptoKey) {
+  const iv        = crypto.getRandomValues(new Uint8Array(16))
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, cryptoKey, fileArrayBuffer)
+  const result    = new Uint8Array(16 + encrypted.byteLength)
+  result.set(iv, 0)
+  result.set(new Uint8Array(encrypted), 16)
+  return result
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────
+function handleFileSelect(input) {
+  if (!input.files[0]) return
+  selectedFile = input.files[0]
+  document.getElementById('fileDropText').textContent =
+    `📄 ${selectedFile.name}  (${(selectedFile.size/1024/1024).toFixed(1)} MB)`
+  setStep(1)
+}
+
+function handleDrop(e) {
+  e.preventDefault()
+  document.getElementById('fileDrop').classList.remove('dragover')
+  const file = e.dataTransfer.files[0]
+  if (!file) return
+  selectedFile = file
+  document.getElementById('fileDropText').textContent =
+    `📄 ${file.name}  (${(file.size/1024/1024).toFixed(1)} MB)`
+  setStep(1)
+}
+
+function handleThumbSelect(input) {
+  if (!input.files[0]) return
+  selectedThumb = input.files[0]
+  document.getElementById('thumbDropText').textContent = `🖼 ${selectedThumb.name}`
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i)
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '')
+  }
+}
+
+function setProgress(pct, stepLabel, bytes, speed) {
+  document.getElementById('uploadProgressWrap').style.display = 'block'
+  document.getElementById('uploadProgressBar').style.width    = pct + '%'
+  document.getElementById('progressPct').textContent          = Math.round(pct) + '%'
+  document.getElementById('progressStepLabel').textContent    = stepLabel || ''
+  document.getElementById('progressBytes').textContent        = bytes || ''
+  document.getElementById('progressSpeed').textContent        = speed || ''
+}
+
+function setStatus(msg, color) {
+  const s = document.getElementById('uploadStatus')
+  s.style.color = color || '#8b949e'
+  s.textContent = msg
+}
+
+function formatBytes(b) {
+  if (b < 1024)           return b + ' B'
+  if (b < 1024*1024)      return (b/1024).toFixed(1) + ' KB'
+  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB'
+  return (b/1024/1024/1024).toFixed(2) + ' GB'
+}
+
+// ── ENCRYPT & UPLOAD ──────────────────────────────────────────
+async function encryptAndUpload() {
+  const title    = document.getElementById('movieTitle').value.trim()
+  const desc     = document.getElementById('movieDesc').value.trim()
+  const emoji    = document.getElementById('movieEmoji').value.trim() || '🎬'
+  const genre    = document.getElementById('movieGenre').value.trim()
+  const rating   = document.getElementById('movieRating').value.trim()
+  const duration = parseInt(document.getElementById('movieDuration').value) || 0
+
+  if (!title)        { setStatus('Please enter a title.', '#f85149'); return }
+  if (!selectedFile) { setStatus('Please select a video file.', '#f85149'); return }
+
+  const uploadBtn   = document.getElementById('uploadBtn')
+  uploadBtn.disabled    = true
+  uploadBtn.textContent = '⏳ Processing...'
+
+  const encFileName = selectedFile.name + '.enc'
+  const startTime   = Date.now()
+
+  try {
+    setStep(1)
+    setProgress(5, 'Reading file into memory...')
+    const fileBuffer = await selectedFile.arrayBuffer()
+    setProgress(15, 'File loaded ✓')
+
+    setStep(2)
+    setProgress(20, 'Generating AES-256 key...')
+    const cryptoKey = await generateAesKey()
+    const base64Key = await exportKeyBase64(cryptoKey)
+
+    const keyBox = document.getElementById('keyDisplay')
+    keyBox.style.display = 'block'
+    keyBox.textContent   = base64Key
+
+    setProgress(25, `Encrypting ${(selectedFile.size/1024/1024).toFixed(1)} MB...`)
+    const encryptedBytes = await encryptFileBytes(fileBuffer, cryptoKey)
+    setProgress(45, 'Encryption complete ✓')
+
+    setStep(3)
+    setProgress(45, 'Starting upload...')
+    await uploadWithProgress(encryptedBytes, encFileName, startTime)
+    setProgress(88, 'Upload complete ✓')
+    setStatus('Saving movie record to database...')
+
+    // Use REST API directly with session token — bypasses all client issues
+    const token = currentSession?.access_token || SUPABASE_ANON_KEY
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/movies`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey':        SUPABASE_ANON_KEY,
+        'Prefer':        'return=minimal'
+      },
+      body: JSON.stringify({
+        title,
+        description:      desc,
+        poster_url:       emoji,
+        enc_filename:     encFileName,
+        aes_key_base64:   base64Key,
+        aes_key_b64:      base64Key,
+        genre,
+        rating,
+        duration_seconds: duration
+      })
+    })
+
+    if (!insertRes.ok) {
+      const errText = await insertRes.text()
+      throw new Error('Database error: ' + errText)
+    }
+
+    // Upload thumbnail if selected
+    if (selectedThumb) {
+      setProgress(94, 'Uploading thumbnail...')
+      const thumbName = `thumbnails/${Date.now()}_${selectedThumb.name}`
+      const { error: thumbErr } = await sb.storage
+        .from('videos')
+        .upload(thumbName, selectedThumb, { upsert: true, contentType: selectedThumb.type })
+
+      if (!thumbErr) {
+        const { data: urlData } = sb.storage.from('videos').getPublicUrl(thumbName)
+        await fetch(`${SUPABASE_URL}/rest/v1/movies?enc_filename=eq.${encodeURIComponent(encFileName)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey':        SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({ thumbnail_url: urlData.publicUrl })
+        })
+      }
+    }
+
+    setStep(4)
+    setProgress(100, '✅ Upload complete!')
+    setStatus(`✅ "${title}" uploaded successfully!`, '#3fb950')
+    showToast(`✅ ${title} uploaded!`)
+
+    setTimeout(() => {
+      document.getElementById('movieTitle').value    = ''
+      document.getElementById('movieDesc').value     = ''
+      document.getElementById('movieEmoji').value    = ''
+      document.getElementById('movieGenre').value    = ''
+      document.getElementById('movieRating').value   = ''
+      document.getElementById('movieDuration').value = ''
+      document.getElementById('fileDropText').textContent  = 'Click to select video file or drag & drop'
+      document.getElementById('thumbDropText').textContent = 'Click to select thumbnail image'
+      selectedFile = selectedThumb = null
+      keyBox.style.display = 'none'
+      keyBox.textContent   = ''
+      document.getElementById('uploadProgressWrap').style.display = 'none'
+      document.getElementById('uploadProgressBar').style.width    = '0'
+      setStatus('')
+      setStep(1)
+      uploadBtn.disabled    = false
+      uploadBtn.textContent = '🔐 Encrypt & Upload Movie'
+    }, 4000)
+
+    loadMovies()
+
+  } catch (err) {
+    setStatus('❌ ' + err.message, '#f85149')
+    document.getElementById('uploadProgressWrap').style.display = 'none'
+    uploadBtn.disabled    = false
+    uploadBtn.textContent = '🔐 Encrypt & Upload Movie'
+    console.error(err)
+  }
+}
+
+    
+
+function uploadWithProgress(encryptedBytes, fileName, startTime) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const url = `${SUPABASE_URL}/storage/v1/object/videos/${fileName}`
+
+    let lastLoaded = 0
+    let lastTime   = Date.now()
+
+    xhr.upload.addEventListener('progress', e => {
+      if (!e.lengthComputable) return
+      const pct     = 45 + (e.loaded / e.total) * 42
+      const elapsed = (Date.now() - lastTime) / 1000
+      const speed   = elapsed > 0 ? formatBytes((e.loaded - lastLoaded) / elapsed) + '/s' : ''
+      lastLoaded = e.loaded
+      lastTime   = Date.now()
+      const totalElapsed = (Date.now() - startTime) / 1000
+      const eta = totalElapsed > 0 && e.loaded > 0
+        ? Math.round((e.total - e.loaded) / (e.loaded / totalElapsed)) : 0
+      setProgress(pct,
+        `Uploading to cloud... ${Math.round(e.loaded/e.total*100)}%`,
+        `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`,
+        speed + (eta > 0 ? `  ~${eta}s remaining` : ''))
+    })
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve()
+      else reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`))
+    })
+    xhr.addEventListener('error', () => reject(new Error('Network error during upload')))
+    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
+
+    xhr.open('POST', url)
+    // Use service role key for storage upload too
+    xhr.setRequestHeader('Authorization', `Bearer ${currentSession?.access_token || SUPABASE_ANON_KEY}`)
+    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY)
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream')
+    xhr.setRequestHeader('x-upsert', 'true')
+    xhr.send(new Blob([encryptedBytes], { type: 'application/octet-stream' }))
+  })
+}
+
+// ── MOVIES ────────────────────────────────────────────────────
+async function loadMovies() {
+  const { data: movies } = await sb
+    .from('movies')
+    .select('id, title, enc_filename, view_count, created_at')
+    .order('created_at', { ascending: false })
+
+  const container = document.getElementById('moviesList')
+  if (!movies || !movies.length) {
+    container.innerHTML = '<p class="empty">No movies yet</p>'
+    document.getElementById('storageUsedLabel').textContent = '0 MB / 1 GB'
+    return
+  }
+
+  container.innerHTML = movies.map(m => `
+    <div style="padding:12px;border:1px solid #333;border-radius:8px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:14px;font-weight:500">${m.title}</div>
+          <div style="font-size:11px;color:#8b949e;margin-top:2px">${m.enc_filename}</div>
+          <div style="font-size:11px;color:#8b949e;margin-top:2px">👁 ${m.view_count || 0} views</div>
+        </div>
+        <button class="btn btn-red btn-sm"
+          onclick="deleteMovie('${m.id}','${m.title}','${m.enc_filename}')">Delete</button>
+      </div>
+    </div>`).join('')
+
+  document.getElementById('statMovies').textContent = movies.length
+  await updateStorageUsage()
+}
+
+async function updateStorageUsage() {
+  try {
+    const { data: files } = await sb.storage.from('videos').list('', { limit: 1000 })
+    if (!files) return
+    let totalBytes = 0
+    files.forEach(f => { if (f.metadata?.size) totalBytes += f.metadata.size })
+    const totalMB = totalBytes / 1024 / 1024
+    const pct     = Math.min((totalMB / 1024) * 100, 100)
+    document.getElementById('storageUsedLabel').textContent = `${totalMB.toFixed(1)} MB / 1 GB`
+    document.getElementById('storageFill').style.width      = pct + '%'
+    document.getElementById('storageFill').style.background =
+      pct > 80 ? '#f85149' : pct > 60 ? '#d29922' : 'linear-gradient(90deg,#7c3aed,#3fb950)'
+  } catch { }
+}
+
+async function loadStorageBreakdown() {
+  const { data: movies } = await sb.from('movies').select('id, title, enc_filename, view_count')
+  if (!movies) return
+  const { data: files } = await sb.storage.from('videos').list('', { limit: 1000 })
+  const fileMap = {}
+  if (files) files.forEach(f => fileMap[f.name] = f.metadata?.size || 0)
+
+  const breakdown = document.getElementById('storageBreakdown')
+  if (!movies.length) { breakdown.innerHTML = '<p class="empty">No movies</p>'; return }
+
+  breakdown.innerHTML = `<table>
+    <thead><tr><th>Movie</th><th>File</th><th>Size</th><th>Views</th><th>Storage %</th></tr></thead>
+    <tbody>${movies.map(m => {
+      const size    = fileMap[m.enc_filename] || 0
+      const sizeMB  = (size / 1024 / 1024).toFixed(1)
+      const pct     = ((size / (1024*1024*1024)) * 100).toFixed(2)
+      const barColor= size > 500*1024*1024 ? '#f85149' : '#7c3aed'
+      return `<tr>
+        <td>${m.title}</td>
+        <td style="font-size:11px;color:#8b949e">${m.enc_filename}</td>
+        <td>${sizeMB} MB</td>
+        <td>👁 ${m.view_count || 0}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;background:#1e1e2e;border-radius:4px;height:6px;overflow:hidden">
+              <div style="width:${Math.min(pct*10,100)}%;height:100%;background:${barColor};border-radius:4px"></div>
+            </div>
+            <span style="font-size:11px;color:#8b949e">${pct}%</span>
+          </div>
+        </td>
+      </tr>`
+    }).join('')}</tbody></table>`
+}
+
+async function deleteMovie(id, title, encFilename) {
+  if (!confirm(`Delete movie "${title}"?`)) return
+  await sb.from('movies').delete().eq('id', id)
+  await sb.storage.from('videos').remove([encFilename])
+  showToast('Movie deleted')
+  loadMovies()
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+async function loadStats() {
+  const { data: profiles }  = await sb.from('profiles').select('id')
+  const { data: approvals } = await sb.from('user_approvals').select('is_approved')
+  const { data: movies }    = await sb.from('movies').select('id')
+  const approvedCount = approvals?.filter(a => a.is_approved).length ?? 0
+  const pendingCount  = approvals?.filter(a => !a.is_approved).length ?? 0
+  document.getElementById('statUsers').textContent    = profiles?.length ?? 0
+  document.getElementById('statApproved').textContent = approvedCount
+  document.getElementById('statMovies').textContent   = movies?.length ?? 0
+  document.getElementById('statPending').textContent  = pendingCount
+}
+
+function updateStats(users, aMap) {
+  const approved = users.filter(u => aMap && aMap[u.id]).length
+  const pending  = users.filter(u => aMap && !aMap[u.id]).length
+  document.getElementById('statUsers').textContent    = users.length
+  document.getElementById('statApproved').textContent = approved
+  document.getElementById('statPending').textContent  = pending
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div')
+  t.textContent = msg
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#252535;border:1px solid #444;color:#e6edf3;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s'
+  document.body.appendChild(t)
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300) }, 2500)
+}
+
+// ── AUTH STATE ────────────────────────────────────────────────
+sbAuth.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    currentSession = session
+    document.getElementById('topbarEmail').textContent    = session.user.email
+    document.getElementById('loginSection').style.display = 'none'
+    document.getElementById('mainSection').style.display  = 'block'
+    loadUsers(); loadMovies(); loadStats()
+  }
+})
+</script>
+</body>
+</html>
